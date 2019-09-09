@@ -412,6 +412,9 @@ message Action {
   // If true, then the `Action`'s result cannot be cached, and in-flight
   // requests for the same `Action` may not be merged.
   bool do_not_cache = 7;
+
+  //
+  repeated InputDependency input_dependencies = 8;
 }
 
 // A `Command` is the actual command executed by a worker running an
@@ -548,6 +551,17 @@ message Platform {
   // be lexicographically sorted by name, and then by value. Sorting of strings
   // is done by code point, equivalently, by the UTF-8 bytes.
   repeated Property properties = 1;
+}
+
+message InputDependency {
+  //
+  Digest action_digest = 1;
+
+  //
+  string path = 2;
+
+  //
+  string input_path = 3;
 }
 
 // A `Directory` represents a directory node in a file tree, containing zero or
@@ -741,6 +755,12 @@ message ExecutedActionMetadata {
 
   // When the worker finished uploading action outputs.
   google.protobuf.Timestamp output_upload_completed_timestamp = 10;
+
+  // When the action dependencies...
+  google.protobuf.Timestamp waiting_depedencies_start_timestamp = 11;
+
+  // ...
+  google.protobuf.Timestamp waiting_dependencies_completed_timestamp = 12;
 }
 
 // An ActionResult represents the result of an
@@ -1032,6 +1052,12 @@ message ExecuteRequest {
   // The server will have a default policy if this is not provided.
   // This may be applied to both the ActionResult and the associated blobs.
   ResultsCachePolicy results_cache_policy = 8;
+
+  // An optional timeout...  when no timeout is specified, the server SHOULD
+  // impose a timeout.
+  // When an input dependency is referring to an Action that is unknown or is
+  // no longer in-flight, the current Action will fail with FAILED_PRECONDITION.
+  google.protobuf.Duration unknown_input_dependencies_timeout = 9;
 }
 
 // A `LogFile` is a log stored in the CAS.
@@ -1102,6 +1128,12 @@ message ExecutionStage {
 
     // Finished execution.
     COMPLETED = 4;
+
+    //
+    AWAITING_DEPENDENCIES = 5;
+
+    //
+    RESOLVING_DEPENDENCIES = 6;
   }
 }
 
@@ -1448,6 +1480,9 @@ message ExecutionCapabilities {
 
   // Supported execution priority range.
   PriorityCapabilities execution_priority_capabilities = 3;
+
+  // Support for input depedencies
+  bool input_dependencies_enabled = 4;
 }
 
 // Details for the tool used to call the API.
